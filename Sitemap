@@ -1,0 +1,646 @@
+// Ark javascript sitemap
+if (typeof (Evergage.FlickerDefender || {}).setPageMatchTimeout === "function") {
+    //console.log("Override setPageMatchTimeout value");
+    Evergage.FlickerDefender.setPageMatchTimeout(5000);
+    Evergage.FlickerDefender.setRedisplayTimeout(5000);
+}
+
+Evergage.init({
+    cookieDomain: "ark.no"
+
+}).then(() => {
+    
+    const config = {
+        
+       
+        global: {
+            
+        },
+        pageTypeDefault: {
+            name: "default"
+        },
+        pageTypes: [
+            
+				 {
+					name: "Homepage",
+					action: "Viewed homepage",
+					isMatch: () => {
+							return Evergage.util.getPathname(window.location.href)==='/';
+							},
+                    
+                    contentZones: [
+                    { name: "home_page_card_banner", selector: "div.cards-wrapper" },
+                    { name: "featured_horizontal_list", selector: "#content > div:nth-child(5) > div:nth-child(2) > div > div.recommendationContent.js-recommendationContainer" }
+
+                ]
+				 },
+
+              
+            {
+                name: "Cart",
+                isMatch: () => {
+                        if (Evergage.cashDom('div').hasClass("cartDisplay")) {
+                        return true;
+                        } else {
+                        return false;
+                        } 
+                    },                
+                    //action:'View cart event',               
+                itemAction: Evergage.ItemAction.ViewCart,
+                catalog: {
+                    Product: {
+                        lineItems: {
+                            
+                            _id: Evergage.resolvers.fromWindow("dataLayer.slice().find(k => k.event=='checkout').ecommerce.checkout.products)", (cartitems) => {                        
+                                var id = [];                       
+                                for (var item in cartitems) {
+                                    id.push(cartitems[item].id);
+                                }
+                                return id
+                    }),
+                            price: Evergage.resolvers.fromWindow("dataLayer.slice().find(k => k.event=='checkout').ecommerce.checkout.products)", (cartitems) => {                        
+                                var price = [];                       
+                                for (var item in cartitems) {
+                                    price.push(cartitems[item].price);
+                                }
+                                return price
+                    }),
+                            quantity: Evergage.resolvers.fromWindow("dataLayer.slice().find(k => k.event=='checkout').ecommerce.checkout.products)", (cartitems) => {                        
+                                var qty = [];                       
+                                for (var item in cartitems) {
+                                    qty.push(cartitems[item].quantity);
+                                }
+                                return qty
+                            }),
+                        }     
+                    } 
+                },
+            },
+            {
+                name: "Click_and_collect",
+				isMatch: () => /\/click-and-collect-checkout/.test(window.location.pathname),
+                itemAction: Evergage.ItemAction.Purchase,
+                                    
+                order: {
+                    Product: {
+                       orderId: Evergage.resolvers.fromWindow("dataLayer", (dataLayer) => dataLayer.slice().reverse().find(k => k.event=="purchase").ecommerce.purchase.actionField.id),
+                       currency:'NOK',
+                            lineItems:
+                                [ {
+                            
+                            _id: Evergage.resolvers.fromWindow("dataLayer.slice().find(k => k.event=='purchase').ecommerce.purchase.products)", (cartitems) => {                        
+                                var id = [];                       
+                                for (var item in cartitems) {
+                                    id.push(cartitems[item].id);
+                                }
+                                return id
+                    }),
+                            price: Evergage.resolvers.fromWindow("dataLayer.slice().find(k => k.event=='purchase').ecommerce.purchase.products)", (cartitems) => {                        
+                                var price = [];                       
+                                for (var item in cartitems) {
+                                    price.push(cartitems[item].price);
+                                }
+                                return price
+                    }),
+                            quantity: Evergage.resolvers.fromWindow("dataLayer.slice().find(k => k.event=='checkout').ecommerce.checkout.products)", (cartitems) => {                        
+                                var qty = [];                       
+                                for (var item in cartitems) {
+                                    qty.push(cartitems[item].quantity);
+                                }
+                                return qty
+                            }),
+                        }     ]
+                        }
+                    }
+                },
+                {
+                name: "Order_confirmation",
+				isMatch: () => /\/orderConfirmation/.test(window.location.pathname),
+				//isMatch: () => /\/checkout\/multi\/summary\/view/.test(window.location.href),
+				action: "Purchase_event",
+                itemAction: Evergage.ItemAction.Purchase,
+                order: {
+                    Product: {
+                       orderId: Evergage.resolvers.fromWindow("dataLayer", (dataLayer) => [dataLayer.slice().reverse().find(k => k.event=="purchase").ecommerce.purchase.actionField.id]),
+                       totalValue: Evergage.resolvers.fromWindow("dataLayer", (dataLayer) => [dataLayer.slice().reverse().find(k => k.event=="purchase").ecommerce.purchase.actionField.revenue]),
+                            lineItems:
+                                {
+                                _id:   () => {
+                                    const products = getProductsFromCheckout();
+                                    return [products.id];
+                                                        },
+                                price:   () => {
+                                    const products = getProductsFromCheckout();
+                                    return [products.price];
+                                     },
+                                quantity:   () => {
+                                    const products = getProductsFromCheckout();
+                                    return [products.quantity];
+                                }
+                            },
+                        }
+                    }
+                    
+                },
+            
+                 
+                    {
+					name: "Search page",
+					action: "Viewed search page",
+					isMatch: () => {
+							return Evergage.util.getPathname(window.location.href) === "/search";
+							},
+                    contentZones: [
+                    { name: "product_grid_search", selector: "div.search-results-wrapper.no-tags" }
+                    ]
+
+				},
+                {
+					name: "Category page",
+					action: "Viewed category page",
+					isMatch: () => {
+							return Evergage.util.getPathname(window.location.href).includes("kategori")
+;
+							},
+                    contentZones: [
+                    { name: "product_grid_category", selector: "div.search-results-wrapper.no-tags" }
+                    ],
+                    catalog: {
+                        Category: {
+                            _id:() => { 
+                                return Evergage.DisplayUtils.pageElementLoaded(".breadcrumbs .breadcrumbs-list__item  span", "html").then((ele) => {
+                                return Evergage.resolvers.buildCategoryId(".breadcrumbs .breadcrumbs-list__item  span",1, null, categoryId => categoryId.toUpperCase())
+                            });
+                            }
+                            }
+                    }
+                },
+                {
+					name: "Author page",
+					action: "Viewed author page",
+					isMatch: () => {
+							return /\/forfattere/.test(window.location.href);
+							},
+                    contentZones: [
+                    { name: "similar_authors", selector: "div.author-page-similar-authors-container" }                    ]
+
+				 },
+				 {
+					name: "Store finder page",
+					action: "Viewed store finder page",
+					isMatch: () => {
+							return Evergage.resolvers.fromSelectorAttribute("body","class")().includes("page-storefinderPage");
+							}
+
+				 },
+				 {
+					name: "Customer service page",
+					action: "Viewed customer service page",
+					isMatch: () => {
+							return Evergage.resolvers.fromSelectorAttribute("body","class")().includes("page-arkCustomerService");
+							}
+
+				 },
+				 {
+					name: "Ark friend page",
+					action: "Viewed ark friend page",
+					isMatch: () => {
+							return Evergage.resolvers.fromSelectorAttribute("body","class")().includes("page-arkFriend");
+							}
+
+				 },
+				 {
+					name: "Ark promotion page",
+					action: "Viewed ark prormotion page",
+					isMatch: () => {
+							return Evergage.resolvers.fromSelectorAttribute("body","class")().includes("page-arkApp");
+							}
+
+				 },
+				 {
+					name: "Click and collect information page",
+					action: "Viewed click and collect information page",
+					isMatch: () => {
+							return Evergage.resolvers.fromSelectorAttribute("body","class")().includes("page-arkClickAndCollect");
+							}
+
+				 },
+				 {
+					name: "B2B sign up page",
+					action: "Viewed B2B sign up page",
+					isMatch: () => {
+							return Evergage.resolvers.fromSelectorAttribute("body","class")().includes("page-arkCompanyCustomer");
+							}
+
+				 },
+				 {
+					name: "About ark page",
+					action: "Viewed about ark page",
+					isMatch: () => {
+							return Evergage.resolvers.fromSelectorAttribute("body","class")().includes("page-arkAboutArk");
+							}
+
+				 },
+				 // FQA pages
+				 {
+					name: "FQA | Delivery status page",
+					action: "Viewed about ark page",
+					isMatch: () => {
+							return Evergage.resolvers.fromSelectorAttribute("body","class")().includes("page-arkDeliveryStatus");
+							}
+
+				 },
+				 {
+					name: "FQA | Purchase help page",
+					action: "Viewed about ark page",
+					isMatch: () => {
+							return Evergage.resolvers.fromSelectorAttribute("body","class")().includes("page-arkPurchaseHelpFAQ");
+							}
+
+				 },
+				 {
+					name: "FQA | Digital products page",
+					action: "Viewed about ark page",
+					isMatch: () => {
+							return Evergage.resolvers.fromSelectorAttribute("body","class")().includes("page-arkEbookAndAudiobookFAQ");
+							}
+
+				 },
+				 {
+					name: "FQA | Ark friend page",
+					action: "Viewed about ark page",
+					isMatch: () => {
+							return Evergage.resolvers.fromSelectorAttribute("body","class")().includes("page-arkFriendFAQ");
+							}
+
+				 },
+				 {
+					name: "FQA | Shipping page",
+					action: "Viewed about ark page",
+					isMatch: () => {
+							return Evergage.resolvers.fromSelectorAttribute("body","class")().includes("page-arkShippingAndDeliveryFAQ");
+							}
+
+				},
+                 // Account pages
+                 {
+					name: "MyAccount page",
+					action: "Viewed MyPage page",
+					isMatch: () => {
+							return window.location.pathname.split('/')[1] === "my-account";
+							},
+                    contentZones: [
+                    { name: "featured_book_recommendation", selector: "div.top-item-section" },
+                    { name: "top_category_recommendations", selector: "div.category-section" }                ]
+                },
+                 {
+					name: "My wishlist page",
+					action: "Viewed my wishlist page",
+					isMatch: () =>  /\/wishlist/.test(window.location.href),
+                    
+
+                    /*catalog: {
+                    Product: {
+                        lineItems: {
+                            _id:  Evergage.resolvers.fromSelectorAttributeMultiple(".product", "data-product-code")(),
+                            price:  Evergage.resolvers.fromSelectorMultiple(".priceFull")()
+                            }
+                        }   
+                    }*/
+                },
+                
+
+               
+                
+                   {
+					name: "Product page",
+					action: "Viewed product page",
+					isMatch: () =>  /\/boker/.test(window.location.href),
+                            catalog: {
+                            Product: {
+                                //_id: Evergage.resolvers.fromSelectorAttribute("div.novicell", "data-isbn")(),
+                                _id:   () => {
+                                const products = getProductsFromDataLayer();
+                                return products[0].id;
+                                },
+                                //name: Evergage.resolvers.fromMeta("og:title")(),
+                                name:   () => {
+                                const products = getProductsFromDataLayer();
+                                return products[0].name;
+                                },
+                                description: Evergage.resolvers.fromMeta("og:description")(),
+                                imageUrl: Evergage.resolvers.fromMeta("og:image")(),
+                                url: Evergage.resolvers.fromCanonical()(),
+                                rating: Evergage.cashDom(".lipscore-rating-value").text(),
+                                //price: Evergage.resolvers.fromSelectorAttribute("#lipscore-rating", "ls-price")(),
+                                price:   () => {
+                                const products = getProductsFromDataLayer();
+                                return products[0].price;
+                                },
+                                categories: () => {
+                                return Evergage.resolvers.buildCategoryId(".breadcrumbs .breadcrumbs-list  a", null, null, (categoryId) => [categoryId.toUpperCase()]);
+                                },
+                                inventoryCount:  () => { 
+                                  let inventoryStatus = Evergage.cashDom('span').hasClass("add-to-cart-inventory__status--green");
+                                  if (inventoryStatus===true ||  inventoryStatus == 'true') {
+                                    return inventoryCount = '1';
+                                  }
+                                  else { 
+                                     return inventoryCount = '0';
+                                  }
+                                },
+                                discountPrice:   () => {
+                                const products = getProductsFromDataLayer();
+                                return parseInt(products[0].metric1)+parseInt(products[0].price);
+                                }, 
+                            dimensions: {
+                                Series: [Evergage.resolvers.fromSelector(".product-series__info")().slice(1,  -17)],
+                                //Author: [Evergage.resolvers.fromSelector("span.author")()]
+                                Author:   () => {
+                                const products = getProductsFromDataLayer();
+                                return products[0].dimension3;
+                            },
+                                Format:   () => {
+                                const products = getProductsFromDataLayer();
+                                return [products[0].dimension1];
+                            },
+                                Language:   () => {
+                                const products = getProductsFromDataLayer();
+                                return [products[0].dimension2];
+                            },
+                                ReleaseYear:   () => {
+                                const products = getProductsFromDataLayer();
+                                return [products[0].dimension8];
+                                },
+                            },
+                        },
+                    },
+
+				 
+                listeners: [
+                Evergage.listener("click", ".addToWishlist", () => {
+                    Evergage.sendEvent({
+                            action: 'Add to wishlist event'
+                        });
+                    }),
+                    Evergage.listener("click", ".js-add-to-cart", () => {
+                        console.log("My message");
+							
+                            const lineItem = Evergage.util.buildLineItemFromPageState("input.qty");
+                            /*lineItem.sku = { 
+                                _id: Evergage.resolvers.fromWindow("dataLayer", (dataLayer) => [dataLayer.slice().reverse().find(k => k.event=="addToCart").ecommerce.add.products[0].id])
+                                 };*/
+                             Evergage.sendEvent({
+                                                action: "Add To Cart event",
+                                                itemAction: Evergage.ItemAction.AddToCart,
+                                                    cart: {
+                                                        singleLine: {
+                                                            Product:lineItem
+                                                    }
+                                            }
+                              });
+                    }),
+
+                    /*Evergage.listener("click", "#click-and-collect-button", () => {
+                        Evergage.sendEvent({
+                                action: "Click&Collect event",
+                            });
+                    }),*/
+                     
+                Evergage.listener("click", "div.vipps", () => {
+                    Evergage.sendEvent({
+                        action: "Vipps Hurtigkasse event",                            
+                        });
+                    }),
+                ],
+                },
+                {
+					name: "Category blog Page",
+                    action: "Viewed category blog page",
+                    isMatch: () => Evergage.util.getPathname(window.location.href) === "/blogg/",
+                    catalog: {
+                    Category: {
+                        _id: () => {
+                                return Evergage.resolvers.buildCategoryId(".menu-kategorimeny-container .menu-item a", null, null, (categoryId) => categoryId.toUpperCase());
+                            
+                        }
+                    }
+                },
+                },
+
+
+                /*{
+					name: "Blog Page",
+                    action: "Viewed Blog Page",
+                    isMatch: () => {
+                    // Need another selector
+					return Evergage.resolvers.fromMeta("og:type")() === "article";
+                    },
+                    catalog: {
+                    Blog: {
+                        _id: Evergage.resolvers.fromSelectorAttribute("article", "id")(),
+                        name: Evergage.resolvers.fromMeta("og:title")(),
+                        description: Evergage.resolvers.fromMeta("og:description")(),
+                        imageUrl: Evergage.resolvers.fromMeta("og:image")(),
+                        url: Evergage.resolvers.fromCanonical()(),
+                        attributes: {
+                        date: Evergage.resolvers.fromMeta("article:published_time")(),
+                        },
+                        categories: 
+                        Evergage.resolvers.buildCategoryId(".post-categories li a", null, null, (categoryId) => {
+                            return [categoryId.toUpperCase()];
+                        }),
+                    
+
+                    },
+
+                    },
+
+			},*/
+	
+             {
+                name: "Registration page",
+                action: "Viewed registration page",
+
+                     isMatch: () => {
+							return Evergage.util.getPathname(window.location.href) === "/register";
+                        },
+
+                        listeners: [
+                            Evergage.listener("submit", "#arkRegisterForm", () => {
+                                console.log("Hello! registered B2C user");
+                                //******* Collect from test website 
+                                const userEmail = Evergage.cashDom("input[id='register.email']").val();
+                                const userfname = Evergage.cashDom("input[id='register.firstName']").val();
+                                const userlname = Evergage.cashDom("input[id='register.lastName']").val();
+    
+
+
+                               if (userEmail) {
+                                        Evergage.sendEvent({
+                                            action: "Registred user", 
+                                            user: {
+                                                   id:userEmail,
+                                            attributes: 
+                                                    {
+                                                        userId : userEmail,
+                                                        emailAddress: userEmail,
+                                                        fistName: userfname,
+                                                        lastName: userlname,
+                                                        customerType: 'B2C'
+                                                    }
+                                            }
+                                        });
+                                    }
+                                
+                            }),
+                           
+                        ]
+             },
+             {
+					name: "Public B2B  registration Page",
+                    action: "Viewed public sector registration page",
+                    isMatch: () => {
+							return Evergage.util.getPathname(window.location.href) === "/register/publicSector";
+                        }, 
+
+                        listeners: [
+                            Evergage.listener("submit", ".buttonSmall", () => {
+                                console.log("Hello! registered B2B user");
+                                //******* Collect from test website 
+                                const userEmail = Evergage.cashDom("input[id='register.email']").val();
+                                const userfname = Evergage.cashDom("input[id='register.companyName']").val();
+                                const userAddress = Evergage.cashDom("input[id='register.streetName']").val() + " " +Evergage.cashDom("input[id='register.streetNumber']").val()+  " "  +Evergage.cashDom("input[id='register.city']").val();
+                                const userPostalcode= Evergage.cashDom("input[id='register.postalcode']").val();
+                                const userMobilenumber= Evergage.cashDom("input[id='register.mobileNumber']").val();
+                                if (userEmail) {
+                                        Evergage.sendEvent({
+                                            action: "Private B2B Registred", 
+                                            user: {
+                                                id:userEmail,
+                                            attributes: 
+                                                    {
+                                                        emailAddress: userEmail,
+                                                        fistName: userfname,
+                                                        address: userAddress,
+                                                        zipCode:userPostalcode,
+                                                        mobileNumber: userMobilenumber,
+                                                        customerType: 'Public B2B'
+                                                    }
+                                            }
+                                        });
+                                    }
+                            }),
+                        ]             
+                    },
+                {
+					name: "Private B2B registration Page",
+                    action: "Viewed public B2B registration page",
+                    isMatch: () => {
+							return Evergage.util.getPathname(window.location.href) === "/register/privateSector";
+                            }, 
+                            listeners: [
+                            Evergage.listener("submit", ".buttonSmall", () => {
+                                console.log("Hello! registered private B2B user");
+                                //******* Collect from test website 
+                                const userEmail = Evergage.cashDom("input[id='register.email']").val();
+                                const userfname = Evergage.cashDom("input[id='register.companyName']").val();
+                                const userAddress = Evergage.cashDom("input[id='register.streetName']").val() + " " +Evergage.cashDom("input[id='register.streetNumber']").val()+  " "  +Evergage.cashDom("input[id='register.city']").val();
+                                const userPostalcode= Evergage.cashDom("input[id='register.postalcode']").val();
+                                const userMobilenumber= Evergage.cashDom("input[id='register.mobileNumber']").val();
+                                if (userEmail) {
+                                        Evergage.sendEvent({
+                                            action: "Private B2B Registred", 
+                                            user: {
+                                                id:userEmail,
+                                            attributes: 
+                                                    {
+                                                        emailAddress: userEmail,
+                                                        fistName: userfname,
+                                                        address: userAddress,
+                                                        zipCode:userPostalcode,
+                                                        mobileNumber: userMobilenumber,
+                                                        customerType: 'Private B2B'
+                                                    }
+                                            }
+                                        });
+                                    }
+                            }),
+                        ]                      
+                },
+             {
+                name: "Login page",
+                action: "Viewed login page",
+
+                		isMatch: () => /\/login/.test(window.location.pathname),
+
+
+                        listeners: [
+                            Evergage.listener("click", ".login", () => {
+                                console.log("Hello!");
+                                //******* Collect from test website 
+                                const userEmail = Evergage.cashDom("input[id='j_username']").val();
+                               if (userEmail) {
+                                   console.log("Hello!", userEmail);
+                                        Evergage.sendEvent({
+                                            action: "Logged in user", 
+                                            user: {
+                                                id:userEmail,
+                                            attributes: 
+                                                    {
+                                                        emailAddress: userEmail
+                                                    }
+                                                
+                                            }
+                                            
+                                        });
+                                    }
+                                
+                            }),
+                           
+                        ],
+                
+             }
+
+			]
+		};
+		const getProductsFromDataLayer = () => {
+        if (window.dataLayer) {
+            for (let i = 0; i < window.dataLayer.length; i++) {
+                if ((window.dataLayer[i].ecommerce && window.dataLayer[i].ecommerce.detail || {}).products) {
+                    return window.dataLayer[i].ecommerce.detail.products;
+                }
+            }
+        }
+    };
+    const getProductsFromCheckout = () => {
+        if (window.dataLayer) {
+            for (let i = 0; i < dataLayer.slice().find(k => k.event=='purchase').ecommerce.purchase.products.length; i++) {
+                if ((dataLayer.slice().find(k => k.event=='purchase').ecommerce.purchase || {}).products[i]) {
+                    return dataLayer.slice().find(k => k.event=='purchase').ecommerce.purchase.products[i];
+                }
+            }
+        }
+    };
+
+    const getProductCart = () => {
+        if (window.dataLayer) {
+            for (let i = 0; i < dataLayer.slice().find(k => k.event=='checkout').ecommerce.purchase.products.length; i++) {
+                    return dataLayer.find(k => k.event=='checkout').ecommerce.checkout.products[i];
+                }
+            }
+    };
+    
+    /*const handleSPAPageChange = () => {
+        let url = window.location.href;
+        const urlChangeInterval = setInterval(() => {
+            if (url !== window.location.href) {
+                url = window.location.href;
+                Evergage.reinit();
+            }
+        }, 2000);
+    };
+    
+    handleSPAPageChange();*/
+    Evergage.initSitemap(config);
+});// JavaScript Document
